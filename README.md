@@ -22,12 +22,12 @@ BTP一键启动脚本：https://github.com/xiaolin-007/clash/...
 一．注册账号
 
 选择新加坡更快
+
 二．安装部署
 
 ①下载安装Cloud Foundry CLi 命令行客户端：https://github.com/cloudfoundry/cli/r...
 
 ②打开macOS-终端/windows-powershell，以下均通过终端操作，结果会同步显示到BTP主控台。
-
 
 1.登录SAP BTP主机
 
