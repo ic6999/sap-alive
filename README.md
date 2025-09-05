@@ -33,7 +33,7 @@ BTP一键启动脚本：https://github.com/xiaolin-007/clash/...
 
 美国：
 
-cf login -a https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbFkwcmljNWR1dUZLU2VzVzBOR2l2TUFGN0hYZ3xBQ3Jtc0trY2tQRFZ0WFByQjlZR2xuX0M4bHNmOXhoeXdZS2tUdFdJSFM3V0FtYTNkUzU3dnNTVTFqa2Zxd3ZUZjVEbHczYWdlTGRHX0JDZ0tnWVVRRVNUVmtpQ01UNFIwczZGaVlEb0s0XzdHSVJZbUpkd2JWdw&q=https%3A%2F%2Fapi.cf.us10-001.hana.ondemand.com%2F&v=IgzVDiGQFMY
+cf login -a https://api.cf.us10-001.hana.ondemand...
 
 新加坡：
 
