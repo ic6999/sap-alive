@@ -7,16 +7,16 @@ on:
 
 
 concurrency:
-  group: keepalive
+  group: alive
   cancel-in-progress: true
 
 jobs:
-  keepalive:
+  alive:
     runs-on: ubuntu-latest
     timeout-minutes: 8
 
     steps:
-      - name: KeepAlive via container
+      - name: alive via container
         uses: docker://ghcr.io/uncleluogithub/cf-keepalive:latest
         env:
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
