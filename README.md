@@ -43,23 +43,23 @@ cf login -a https://api.cf.ap21.hana.ondemand.com
 3. 
 把 APP_NAME 换成你的应用名
 
-cf push iSAP --docker-image ghcr.io/uncleluogithub/mous:latest -m 512M --health-check-type port
+cf push aaa --docker-image ghcr.io/uncleluogithub/mous:latest -m 512M --health-check-type port
 
 3.设置 UUID
 
-cf set-env iSAP UUID 8f0751c5-d28f-4d6f-922a-bbbae1696d6a
+cf set-env iSAP UUID uuid
 
 4.固化配置并重建
 
-cf restage iSAP
+cf restage aaa
 
 5) 获取二维码/链接
-cf logs iSAP --recent
+cf logs aaa --recent
 
 复制节点：
-vmess://ewogICJ2IjogIjIiLAogICJwcyI6ICLmsrnnrqHpopHpgZPvvJrogIHnvZflj5Tlj5TvvZxTQVAtVlBO55u06L+e54mIIiwKICAiYWRkIjogImlTQVAuY2ZhcHBzLmFwMjEuaGFuYS5vbmRlbWFuZC5jb20iLAogICJwb3J0IjogIjQ0MyIsCiAgImlkIjogIjhmMDc1MWM1LWQyOGYtNGQ2Zi05MjJhLWJiYmFlMTY5NmQ2YSIsCiAgImFpZCI6ICIwIiwKICAic2N5IjogImF1dG8iLAogICJuZXQiOiAid3MiLAogICJ0eXBlIjogIm5vbmUiLAogICJob3N0IjogImlTQVAuY2ZhcHBzLmFwMjEuaGFuYS5vbmRlbWFuZC5jb20iLAogICJwYXRoIjogIi9sYW9sdW8iLAogICJ0bHMiOiAidGxzIgp9
 
-【老罗保活全攻略】
+
+【保活全攻略】
 
 🛠️ 实操步骤（简要）
 
