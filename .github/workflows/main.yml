@@ -2,7 +2,10 @@ name: SAP CF APP保活
 
 on:
   schedule:
+    - cron: "*/5 0 * * *"
+    - cron: "*/10 0 * * *"
     - cron: "*/15 0 * * *"
+    - cron: "*/20 0 * * *"
   #  - cron: "0 */6 * * *"
   workflow_dispatch:
 
