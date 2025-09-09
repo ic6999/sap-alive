@@ -1,5 +1,5 @@
 
-name: Scheduled Restart of SAP BTP Apps
+name: SAP BTP RESTART_US
 on:
   schedule:
     # 每天8:10执行（UTC时间）
