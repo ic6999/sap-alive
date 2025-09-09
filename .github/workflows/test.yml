@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        env_name: ["production-sg”, "dr-us"]
+        env_name: ["production-sg", "dr-us"]
         include:
           - env_name: "production-sg”
             api_url: ${{ env.CF_API_SG }}          # 引用env变量
