@@ -1,5 +1,5 @@
 
-name: SAP BTP RESTART_US
+name: SAP BTP US保活
 on:
   schedule:
     # 每天8:10执行（UTC时间）
