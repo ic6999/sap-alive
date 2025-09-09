@@ -68,7 +68,7 @@ jobs:
           
           # 登录并捕获错误
           if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-              -o "t2-mcekz8t8" -s "dev" --skip-ssl-validation; then
+              -o "t2_t2-mcekz8t8" -s "dev" --skip-ssl-validation; then
             echo "::error::美国环境登录失败"
             exit 1
           fi
