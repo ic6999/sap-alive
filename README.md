@@ -25,7 +25,7 @@ BTP一键启动脚本：https://github.com/xiaolin-007/clash/...
 
 二．安装部署
 
-①下载安装Cloud Foundry CLi 命令行客户端：https://github.com/cloudfoundry/cli/r...
+①下载安装Cloud Foundry CLi 命令行客户端：[https://github.com/cloudfoundry/cli/r...](https://github.com/cloudfoundry/cli)
 
 ②打开macOS-终端/windows-powershell，以下均通过终端操作，结果会同步显示到BTP主控台。
 
@@ -33,11 +33,11 @@ BTP一键启动脚本：https://github.com/xiaolin-007/clash/...
 
 美国：
 
-cf login -a https://api.cf.us10-001.hana.ondemand...
+cf login -a https://api.cf.us10-001.hana.ondemand.com
 
 新加坡：
 
-cf login -a https://api.cf.ap21.hana.ondemand.com
+cf login -a https://api.cf.us10-001.hana.ondemand.com
 
 2. 拉取镜像（老罗提供）：
 3. 
