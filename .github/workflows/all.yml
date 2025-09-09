@@ -22,7 +22,7 @@ jobs:
 
       - name: Login to SAP BTP
         env:
-          CF_API_URL: https://api.cf.eu10.hana.ondemand.com  # 替换为你的API端点
+          CF_API_URL: https://api.cf.us10-001.hana.ondemand.com  # 替换为你的API端点
           CF_USERNAME: ${{ secrets.CF_USERNAME }}           # GitHub Secrets存储凭据
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
           CF_ORG: your-org-name
