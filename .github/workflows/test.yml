@@ -22,17 +22,17 @@ jobs:
         include:
           - env_name: "production-sg"
             # 引用env变量
-            api_url: ${{ env.CF_API_SG }}
-            username: ${{ env.CF_USERNAME }}
-            password: ${{ env.CF_PASSWORD }}
+            api_url: "${{ env.CF_API_SG }}"
+            username: "${{ env.CF_USERNAME }}"
+            password: "${{ env.CF_PASSWORD }}"
             org: "fde1f680trial"
             space: "dev"
             apps: '["iSAP"]'
             
           - env_name: "dr-us"
-            api_url: ${{ env.CF_API_US }}
-            username: ${{ env.CF_USERNAME }}
-            password: ${{ env.CF_PASSWORD }}
+            api_url: "${{ env.CF_API_US }}"
+            username: "${{ env.CF_USERNAME }}"
+            password: "${{ env.CF_PASSWORD }}"
             org: "t2-mcekz8t8"
             space: "dev"
             apps: '["s3"]'
