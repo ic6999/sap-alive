@@ -1,12 +1,14 @@
-name: Restart SAP BTP Apps (ALL)
-
+name: Restart SAP BTP Apps (ALL - Stable Version)
 on:
   schedule:
     # 每天UTC时间0:10和0:30执行（北京时间8:10和8:30）
     - cron: '10 0 * * *'
     - cron: '30 0 * * *'
   workflow_dispatch:  # 允许手动触发
- 
+
+env:
+  CF_CLI_VERSION: "8"  # 明确指定CF CLI版本
+
 jobs:
   restart-apps:
     runs-on: ubuntu-latest
@@ -14,35 +16,80 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install CF CLI
+      - name: Install CF CLI (v${{ env.CF_CLI_VERSION }})
         run: |
           wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
           echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
           sudo apt-get update
-          sudo apt-get install -y cf-cli
+          sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli
 
-      # 新加坡环境
-      - name: Login to Production SG
+      # 新加坡环境（带完整错误处理）
+      - name: Restart iSAP (Singapore)
+        id: restart-sg
         env:
           CF_API_URL: ${{ secrets.CF_API_SG }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+          CF_TRACE: "true"  # 启用详细日志
         run: |
-          echo "🔄 登录新加坡环境 ($CF_API_URL)"
-          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-            -o "fde1f680trial" -s "dev" --skip-ssl-validation
-          cf restart "iSAP" && echo "✅ iSAP 重启成功" || echo "❌ iSAP 重启失败"
-          cf target
+          echo "=== 开始新加坡环境 ==="
+          echo "API端点: $CF_API_URL"
+          
+          # 登录并捕获错误
+          if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+              -o "fde1f680trial" -s "dev" --skip-ssl-validation; then
+            echo "::error::新加坡环境登录失败"
+            exit 1
+          fi
+          
+          # 重启应用
+          if cf restart "iSAP"; then
+            echo "✅ iSAP 重启成功"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "::error::iSAP 重启失败"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          cf target  # 显示当前目标信息
 
-      # 美国环境
-      - name: Login to DR US
+      # 美国环境（带完整错误处理）
+      - name: Restart s3 (USA)
+        id: restart-us
         env:
           CF_API_URL: ${{ secrets.CF_API_US }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+          CF_TRACE: "true"  # 启用详细日志
         run: |
-          echo "🔄 登录美国环境 ($CF_API_URL)"
-          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-            -o "t2-mcekz8t8" -s "dev" --skip-ssl-validation
-          cf restart "s3" && echo "✅ s3 重启成功" || echo "❌ s3 重启失败"
-          cf target
+          echo "=== 开始美国环境 ==="
+          echo "API端点: $CF_API_URL"
+          
+          # 登录并捕获错误
+          if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+              -o "t2-mcekz8t8" -s "dev" --skip-ssl-validation; then
+            echo "::error::美国环境登录失败"
+            exit 1
+          fi
+          
+          # 重启应用
+          if cf restart "s3"; then
+            echo "✅ s3 重启成功"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "::error::s3 重启失败"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          cf target  # 显示当前目标信息
+
+      # 最终状态通知（可选）
+      - name: Notify Result
+        if: always()
+        run: |
+          echo "=== 执行结果 ==="
+          echo "新加坡环境: ${{ steps.restart-sg.outputs.status || 'unknown' }}"
+          echo "美国环境: ${{ steps.restart-us.outputs.status || 'unknown' }}"
+          echo "工作流状态: ${{ job.status }}"
