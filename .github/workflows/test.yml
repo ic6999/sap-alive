@@ -20,8 +20,9 @@ jobs:
       matrix:
         env_name: ["production-sg", "dr-us"]
         include:
-          - env_name: "production-sg”
-            api_url: ${{ env.CF_API_SG }}          # 引用env变量
+          - env_name: "production-sg"
+            # 引用env变量
+            api_url: ${{ env.CF_API_SG }}
             username: ${{ env.CF_USERNAME }}
             password: ${{ env.CF_PASSWORD }}
             org: "fde1f680trial"
