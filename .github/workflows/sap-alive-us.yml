@@ -1,4 +1,4 @@
-name: SAP-VPN保活-US
+name: SAP-VPN保活-US (by ic6)
 
 on:
   schedule:
