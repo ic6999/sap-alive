@@ -1,32 +1,40 @@
-name: Scheduled Restart of SAP BTP Apps (Primitive Matrix)
+name: Scheduled Restart of SAP BTP Apps (Fixed Secrets Handling)
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+
+env:
+  # 第一层：通过env中转secrets（matrix中可引用env）
+  CF_API_SG: ${{ secrets.CF_API_SG }}
+  CF_USERNAME_SG: ${{ secrets.CF_USERNAME }}
+  CF_PASSWORD_SG: ${{ secrets.CF_PASSWORD }}
+  CF_API_US: ${{ secrets.CF_API_US }}
+  CF_USERNAME_US: ${{ secrets.CF_USERNAME }}
+  CF_PASSWORD_US: ${{ secrets.CF_PASSWORD }}
 
 jobs:
   restart-apps:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # 将环境拆分为基本类型参数
-        env_name: ["production-sg", "dr-us"]
+        env_name: ["production-sg”, "dr-us"]
         include:
-          - env_name: "production-sg"
-            api_url: ${{ secrets.CF_API_SG }}
-            username: ${{ secrets.CF_USERNAME }}
-            password: ${{ secrets.CF_PASSWORD }}
+          - env_name: "production-sg”
+            api_url: ${{ env.CF_API_SG }}          # 引用env变量
+            username: ${{ env.CF_USERNAME }}
+            password: ${{ env.CF_PASSWORD }}
             org: "fde1f680trial"
-            space: "dev"
-            apps: '["iSAP"]'  # 必须转为JSON字符串
+            space: “dev”
+            apps: ‘[“iSAP”]’
             
           - env_name: "dr-us"
-            api_url: ${{ secrets.CF_API_US }}
-            username: ${{ secrets.CF_USERNAME }}
-            password: ${{ secrets.CF_PASSWORD }}
+            api_url: ${{ env.CF_API_US }}
+            username: ${{ env.CF_USERNAME }}
+            password: ${{ env.CF_PASSWORD }}
             org: "t2-mcekz8t8"
-            space: "dev"
-            apps: '["s3"]'
+            space: “dev”
+            apps: ‘[“s3”]’
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,8 +49,7 @@ jobs:
       - name: Parse Apps JSON
         id: parse-apps
         run: |
-          APPS_JSON='${{ matrix.apps }}'
-          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
+          echo "apps_json=${{ matrix.apps }}" >> $GITHUB_OUTPUT
 
       - name: Login to ${{ matrix.env_name }}
         env:
@@ -51,13 +58,18 @@ jobs:
           CF_PASSWORD: ${{ matrix.password }}
         run: |
           cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-            -o "${{ matrix.org }}" -s "${{ matrix.space }}"
+            -o "${{ matrix.org }}" -s "${{ matrix.space }}" --skip-ssl-validation
           cf target
 
       - name: Restart Apps
         run: |
-          for app in ${{ steps.parse-apps.outputs.apps_json }}; do
-            app=$(echo $app | tr -d '[],"')  # 清理JSON格式
+          for app in $(echo ${{ steps.parse-apps.outputs.apps_json }} | tr -d '[],"'); do
             echo "🔄 Restarting $app in ${{ matrix.space }}"
             cf restart "$app" || echo "❌ Failed: $app"
           done
+
+      - name: Verify Status
+        run: |
+          echo "✅ Apps status in ${{ matrix.space }}:"
+          cf apps | grep -E "name|requested state"
+
