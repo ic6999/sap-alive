@@ -1,4 +1,5 @@
-name: Scheduled Restart of SAP BTP Apps (Primitive Matrix)
+name: SAP KEEPALICVE
+
 on:
   schedule:
     - cron: "*/5 0 * * *"
@@ -6,7 +7,8 @@ on:
     - cron: "*/15 0 * * *"
     - cron: "*/20 0 * * *"
     - cron: "0 */6 * * *"
-    workflow_dispatch:
+  workflow_dispatch:
+
 
 jobs:
   restart-apps:
