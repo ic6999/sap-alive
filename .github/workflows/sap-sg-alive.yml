@@ -1,1 +1,44 @@
 
+name: SAP BTP ALIVE_SG
+on:
+  schedule:
+    # 每天凌晨3点执行（UTC时间）
+    - cron: '8 0 * * *'
+    - cron: '20 0 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  restart-apps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI
+        run: |
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update
+          sudo apt-get install -y cf-cli
+
+      - name: Login to SAP BTP
+        env:
+          CF_API_URL: https://api.cf.ap21.hana.ondemand.com  # 替换为你的API端点
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}           # GitHub Secrets存储凭据
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+          CF_ORG: fde1f680trial
+          CF_SPACE: dev
+        run: |
+          cf login -a $CF_API_URL -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORG -s $CF_SPACE
+
+      - name: Restart Apps
+        run: |
+          # 重启单个应用
+          cf restart "iSAP"
+
+          # 重启多个应用（按需扩展）
+          # cf restart "your-app-name-2"
+          # cf restart "your-app-name-3"
+
+          # 或者动态获取并重启所有应用（谨慎使用！）
+          # cf apps | awk '/started/{print $1}' | xargs -n 1 cf restart
