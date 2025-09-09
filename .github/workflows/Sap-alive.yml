@@ -1,0 +1,43 @@
+name: Restart SAP BTP Apps (ALL)
+on:
+
+  schedule:
+ # 每天8:10执行（UTC时间）
+    - cron: '10 0 * * *'
+    - cron: '*/15 0 * * *'
+  workflow_dispatch:  # 允许手动触发
+ 
+jobs:
+  restart-apps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI
+        run: |
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update
+          sudo apt-get install -y cf-cli
+
+      # 第一个应用（新加坡）
+      - name: Login to Production SG
+        env:
+          CF_API_URL: ${{ secrets.CF_API_SG }}
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+            -o "fde1f680trial" -s "dev"
+          cf restart "iSAP"       
+      # 第二个应用（美国）
+      - name: Login to DR US
+        env:
+          CF_API_URL: ${{ secrets.CF_API_US }}
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+        run: |
+          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+            -o "t2-mcekz8t8" -s "dev"
+          cf restart "s3"
