@@ -25,15 +25,15 @@ jobs:
           CF_API_URL: https://api.cf.us10-001.hana.ondemand.com  # 替换为你的API端点
           CF_USERNAME: ${{ secrets.CF_USERNAME }}           # GitHub Secrets存储凭据
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_ORG: your-org-name
-          CF_SPACE: your-space-name
+          CF_ORG: t2_t2-mcekz8t8
+          CF_SPACE: dev
         run: |
           cf login -a $CF_API_URL -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORG -s $CF_SPACE
 
       - name: Restart Apps
         run: |
           # 重启单个应用
-          cf restart "your-app-name-1"
+          cf restart "s3"
 
           # 重启多个应用（按需扩展）
           # cf restart "your-app-name-2"
