@@ -1,4 +1,4 @@
-name: SAP CF APP保活SG
+name: SAP BTP SG保活
 
 on:
   schedule:
