@@ -1,0 +1,63 @@
+name: Scheduled Restart of SAP BTP Apps (Primitive Matrix)
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  restart-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 将环境拆分为基本类型参数
+        env_name: ["production-sg", "dr-us"]
+        include:
+          - env_name: "production-sg"
+            api_url: ${{ secrets.CF_API_SG }}
+            username: ${{ secrets.CF_USERNAME }}
+            password: ${{ secrets.CF_PASSWORD }}
+            org: "fde1f680trial"
+            space: "dev"
+            apps: '["iSAP"]'  # 必须转为JSON字符串
+            
+          - env_name: "dr-us"
+            api_url: ${{ secrets.CF_API_US }}
+            username: ${{ secrets.CF_USERNAME }}
+            password: ${{ secrets.CF_PASSWORD }}
+            org: "t2-mcekz8t8"
+            space: "dev"
+            apps: '["s3"]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI
+        run: |
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update
+          sudo apt-get install -y cf-cli
+
+      - name: Parse Apps JSON
+        id: parse-apps
+        run: |
+          APPS_JSON='${{ matrix.apps }}'
+          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
+
+      - name: Login to ${{ matrix.env_name }}
+        env:
+          CF_API_URL: ${{ matrix.api_url }}
+          CF_USERNAME: ${{ matrix.username }}
+          CF_PASSWORD: ${{ matrix.password }}
+        run: |
+          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+            -o "${{ matrix.org }}" -s "${{ matrix.space }}"
+          cf target
+
+      - name: Restart Apps
+        run: |
+          for app in ${{ steps.parse-apps.outputs.apps_json }}; do
+            app=$(echo $app | tr -d '[],"')  # 清理JSON格式
+            echo "🔄 Restarting $app in ${{ matrix.space }}"
+            cf restart "$app" || echo "❌ Failed: $app"
+          done
