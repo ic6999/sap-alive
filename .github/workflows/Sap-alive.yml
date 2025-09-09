@@ -1,10 +1,10 @@
 name: Restart SAP BTP Apps (ALL)
-on:
 
+on:
   schedule:
- # 每天8:10执行（UTC时间）
+    # 每天UTC时间0:10和0:30执行（北京时间8:10和8:30）
     - cron: '10 0 * * *'
-    - cron: '*/15 0 * * *'
+    - cron: '30 0 * * *'
   workflow_dispatch:  # 允许手动触发
  
 jobs:
@@ -21,23 +21,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cf-cli
 
-      # 第一个应用（新加坡）
+      # 新加坡环境
       - name: Login to Production SG
         env:
           CF_API_URL: ${{ secrets.CF_API_SG }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
+          echo "🔄 登录新加坡环境 ($CF_API_URL)"
           cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-            -o "fde1f680trial" -s "dev"
-          cf restart "iSAP"       
-      # 第二个应用（美国）
+            -o "fde1f680trial" -s "dev" --skip-ssl-validation
+          cf restart "iSAP" && echo "✅ iSAP 重启成功" || echo "❌ iSAP 重启失败"
+          cf target
+
+      # 美国环境
       - name: Login to DR US
         env:
           CF_API_URL: ${{ secrets.CF_API_US }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
+          echo "🔄 登录美国环境 ($CF_API_URL)"
           cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-            -o "t2-mcekz8t8" -s "dev"
-          cf restart "s3"
+            -o "t2-mcekz8t8" -s "dev" --skip-ssl-validation
+          cf restart "s3" && echo "✅ s3 重启成功" || echo "❌ s3 重启失败"
+          cf target
