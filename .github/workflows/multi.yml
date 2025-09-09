@@ -1,31 +1,33 @@
-name: Scheduled Restart of SAP BTP Apps (Multi-Endpoint with Custom Orgs/Spaces)
+name: Scheduled Restart of SAP BTP Apps (Primitive Matrix)
 on:
   schedule:
-    - cron: '10 0 * * *'  # 每天UTC时间3点执行
-  workflow_dispatch:     # 支持手动触发
+    - cron: '8 0 * * *'
+    - cron: '20 0 * * *'
+    workflow_dispatch:
 
 jobs:
   restart-apps:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # 完整环境配置矩阵（每个端点独立定义所有参数）
-        environment: 
-          - name: "production-sg"
-            api_url: https://api.cf.ap21.hana.ondemand.com
+        # 将环境拆分为基本类型参数
+        env_name: ["production-sg", "dr-us"]
+        include:
+          - env_name: "production-sg"
+            api_url: ${{ secrets.CF_API_SG }}
             username: ${{ secrets.CF_USERNAME }}
             password: ${{ secrets.CF_PASSWORD }}
-            org: "fde1f680trial"                  # 生产环境Org
-            space: "dev"              # 生产环境Space
-            apps: ["iSAP", "s2"]  # 生产环境应用列表
+            org: "fde1f680trial"
+            space: "dev"
+            apps: '["iSAP"]'  # 必须转为JSON字符串
             
-          - name: "dr-us"
-            api_url: https://api.cf.us10-001.hana.ondemand.com
+          - env_name: "dr-us"
+            api_url: ${{ secrets.CF_API_US }}
             username: ${{ secrets.CF_USERNAME }}
             password: ${{ secrets.CF_PASSWORD }}
-            org: "backup-org"                # 灾备环境Org
-            space: "backup-space"            # 灾备环境Space
-            apps: ["s3"]  # 灾备环境应用列表
+            org: "t2-mcekz8t8"
+            space: "dev"
+            apps: '["s3"]'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,27 +39,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cf-cli
 
-      - name: Login to ${{ matrix.environment.name }}
+      - name: Parse Apps JSON
+        id: parse-apps
+        run: |
+          APPS_JSON='${{ matrix.apps }}'
+          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
+
+      - name: Login to ${{ matrix.env_name }}
         env:
-          CF_API_URL: ${{ matrix.environment.api_url }}
-          CF_USERNAME: ${{ matrix.environment.username }}
-          CF_PASSWORD: ${{ matrix.environment.password }}
-          CF_ORG: ${{ matrix.environment.org }}
-          CF_SPACE: ${{ matrix.environment.space }}
+          CF_API_URL: ${{ matrix.api_url }}
+          CF_USERNAME: ${{ matrix.username }}
+          CF_PASSWORD: ${{ matrix.password }}
         run: |
-          echo "🔐 登录到 [$CF_ORG/$CF_SPACE] @ $CF_API_URL"
-          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE"
-          cf target  # 显示当前目标详情
+          cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
+            -o "${{ matrix.org }}" -s "${{ matrix.space }}"
+          cf target
 
-      - name: Restart Apps in ${{ matrix.environment.space }}
+      - name: Restart Apps
         run: |
-          for app in ${{ toJSON(matrix.environment.apps) }}; do
-            app=$(echo $app | tr -d '"')
-            echo "🔄 重启应用: $app (Space: ${{ matrix.environment.space }})"
-            cf restart "$app" || echo "❌ 失败: $app"
+          for app in ${{ steps.parse-apps.outputs.apps_json }}; do
+            app=$(echo $app | tr -d '[],"')  # 清理JSON格式
+            echo "🔄 Restarting $app in ${{ matrix.space }}"
+            cf restart "$app" || echo "❌ Failed: $app"
           done
-
-      - name: Verify Status
-        run: |
-          echo "✅ 当前运行状态:"
-          cf apps | grep -E "name|requested state"
