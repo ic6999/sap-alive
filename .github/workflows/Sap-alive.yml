@@ -1,13 +1,15 @@
-name: Restart SAP BTP Apps (ALL - Stable Version)
+name: Restart SAP BTP Apps (Smart Restart)
 on:
   schedule:
     # 每天UTC时间0:10和0:30执行（北京时间8:10和8:30）
     - cron: '10 0 * * *'
-    - cron: '*/15 0 * * *'
+    - cron: '30 0 * * *'
   workflow_dispatch:  # 允许手动触发
 
 env:
-  CF_CLI_VERSION: "8"  # 明确指定CF CLI版本
+  CF_CLI_VERSION: "8"            # 明确指定CF CLI版本
+  HEALTH_CHECK_INTERVAL: "300"   # 5分钟内跳过健康应用（秒）
+  MAX_RETRY: "2"                 # 最大重试次数
 
 jobs:
   restart-apps:
@@ -23,73 +25,125 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli
 
-      # 新加坡环境（带完整错误处理）
-      - name: Restart iSAP (Singapore)
-        id: restart-sg
+      # 新加坡环境智能重启
+      - name: Smart Restart iSAP (Singapore)
+        id: smart-restart-sg
         env:
           CF_API_URL: ${{ secrets.CF_API_SG }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_TRACE: "true"  # 启用详细日志
+          CF_TRACE: "true"
         run: |
-          echo "=== 开始新加坡环境 ==="
-          echo "API端点: $CF_API_URL"
+          echo "=== 新加坡环境智能检测 ==="
           
-          # 登录并捕获错误
+          # 登录环境
           if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
               -o "fde1f680trial" -s "dev" --skip-ssl-validation; then
-            echo "::error::新加坡环境登录失败"
+            echo "::error::登录失败"
+            echo "status=login_failed" >> $GITHUB_OUTPUT
             exit 1
           fi
-          
-          # 重启应用
-          if cf restart "iSAP"; then
-            echo "✅ iSAP 重启成功"
-            echo "status=success" >> $GITHUB_OUTPUT
-          else
-            echo "::error::iSAP 重启失败"
-            echo "status=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          
-          cf target  # 显示当前目标信息
 
-      # 美国环境（带完整错误处理）
-      - name: Restart s3 (USA)
-        id: restart-us
+          # 获取应用状态
+          APP_GUID=$(cf app "iSAP" --guid 2>/dev/null)
+          LAST_EVENT=$(cf events "iSAP" --json 2>/dev/null | jq -r '.resources[0].created_at' || echo "")
+          
+          # 健康检查逻辑
+          if [[ -z "$APP_GUID" ]]; then
+            echo "🆘 应用不存在，需要部署"
+            NEED_RESTART=true
+          elif [[ "$LAST_EVENT" != "" ]] && \
+               [[ $(date +%s -d "$LAST_EVENT") -gt $(($(date +%s) - $HEALTH_CHECK_INTERVAL)) ]]; then
+            echo "✅ 应用最近 ${HEALTH_CHECK_INTERVAL} 秒内有活动，跳过重启"
+            echo "status=skipped_healthy" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "🔄 检测到应用需要重启"
+            NEED_RESTART=true
+          fi
+
+          # 执行重启（带重试机制）
+          if [[ "$NEED_RESTART" == "true" ]]; then
+            for i in $(seq 1 $MAX_RETRY); do
+              echo "⏳ 尝试重启 (第 $i 次)"
+              if cf restart "iSAP"; then
+                echo "✅ 重启成功"
+                echo "status=restart_success" >> $GITHUB_OUTPUT
+                cf target
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "::error::重启失败"
+            echo "status=restart_failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # 美国环境智能重启
+      - name: Smart Restart s3 (USA)
+        id: smart-restart-us
         env:
           CF_API_URL: ${{ secrets.CF_API_US }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_TRACE: "true"  # 启用详细日志
+          CF_TRACE: "true"
         run: |
-          echo "=== 开始美国环境 ==="
-          echo "API端点: $CF_API_URL"
+          echo "=== 美国环境智能检测 ==="
           
-          # 登录并捕获错误
+          # 登录环境
           if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
               -o "t2_t2-mcekz8t8" -s "dev" --skip-ssl-validation; then
-            echo "::error::美国环境登录失败"
+            echo "::error::登录失败"
+            echo "status=login_failed" >> $GITHUB_OUTPUT
             exit 1
           fi
-          
-          # 重启应用
-          if cf restart "s3"; then
-            echo "✅ s3 重启成功"
-            echo "status=success" >> $GITHUB_OUTPUT
-          else
-            echo "::error::s3 重启失败"
-            echo "status=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          
-          cf target  # 显示当前目标信息
 
-      # 最终状态通知（可选）
-      - name: Notify Result
+          # 获取应用状态
+          APP_GUID=$(cf app "s3" --guid 2>/dev/null)
+          LAST_EVENT=$(cf events "s3" --json 2>/dev/null | jq -r '.resources[0].created_at' || echo "")
+          
+          # 健康检查逻辑
+          if [[ -z "$APP_GUID" ]]; then
+            echo "🆘 应用不存在，需要部署"
+            NEED_RESTART=true
+          elif [[ "$LAST_EVENT" != "" ]] && \
+               [[ $(date +%s -d "$LAST_EVENT") -gt $(($(date +%s) - $HEALTH_CHECK_INTERVAL)) ]]; then
+            echo "✅ 应用最近 ${HEALTH_CHECK_INTERVAL} 秒内有活动，跳过重启"
+            echo "status=skipped_healthy" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "🔄 检测到应用需要重启"
+            NEED_RESTART=true
+          fi
+
+          # 执行重启（带重试机制）
+          if [[ "$NEED_RESTART" == "true" ]]; then
+            for i in $(seq 1 $MAX_RETRY); do
+              echo "⏳ 尝试重启 (第 $i 次)"
+              if cf restart "s3"; then
+                echo "✅ 重启成功"
+                echo "status=restart_success" >> $GITHUB_OUTPUT
+                cf target
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "::error::重启失败"
+            echo "status=restart_failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # 智能报告生成
+      - name: Smart Report
         if: always()
         run: |
-          echo "=== 执行结果 ==="
-          echo "新加坡环境: ${{ steps.restart-sg.outputs.status || 'unknown' }}"
-          echo "美国环境: ${{ steps.restart-us.outputs.status || 'unknown' }}"
+          echo "=== 智能重启报告 ==="
+          echo "新加坡环境: ${{ steps.smart-restart-sg.outputs.status || '未执行' }}"
+          echo "美国环境: ${{ steps.smart-restart-us.outputs.status || '未执行' }}"
           echo "工作流状态: ${{ job.status }}"
+          
+          # 失败状态码传递
+          if [[ "${{ job.status }}" == "failure" ]]; then
+            echo "::error::检测到失败任务"
+            exit 1
+          fi
