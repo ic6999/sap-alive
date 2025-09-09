@@ -1,7 +1,7 @@
 name: Scheduled Restart of SAP BTP Apps (Multi-Endpoint with Custom Orgs/Spaces)
 on:
   schedule:
-    - cron: '0 3 * * *'  # 每天UTC时间3点执行
+    - cron: '10 0 * * *'  # 每天UTC时间3点执行
   workflow_dispatch:     # 支持手动触发
 
 jobs:
@@ -17,12 +17,12 @@ jobs:
             password: ${{ secrets.CF_PASSWORD }}
             org: "fde1f680trial"                  # 生产环境Org
             space: “dev”              # 生产环境Space
-            apps: [“iSAP”, “s2”]  # 生产环境应用列表
+            apps: [“iSAP”]  # 生产环境应用列表
             
           - name: "dr-us"
             api_url: https://api.cf.us10-001.hana.ondemand.com
             username: ${{ secrets.CF_USERNAME}}
-            password: ${{ secrets.CF_PASSWORD }}
+            password: ${{ secrets.CF_PASSWORD}}
             org: "t2-mcekz8t8"                # 灾备环境Org
             space: “dev”            # 灾备环境Space
             apps: [“s3"]  # 灾备环境应用列表
