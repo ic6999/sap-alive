@@ -11,21 +11,21 @@ jobs:
       matrix:
         # 完整环境配置矩阵（每个端点独立定义所有参数）
         environment: 
-          - name: "production-sg”
+          - name: "production-sg"
             api_url: https://api.cf.ap21.hana.ondemand.com
             username: ${{ secrets.CF_USERNAME }}
             password: ${{ secrets.CF_PASSWORD }}
             org: "fde1f680trial"                  # 生产环境Org
-            space: “dev”              # 生产环境Space
-            apps: [“iSAP”]  # 生产环境应用列表
+            space: "dev"              # 生产环境Space
+            apps: ["iSAP", "s2"]  # 生产环境应用列表
             
           - name: "dr-us"
             api_url: https://api.cf.us10-001.hana.ondemand.com
-            username: ${{ secrets.CF_USERNAME}}
-            password: ${{ secrets.CF_PASSWORD}}
-            org: "t2-mcekz8t8"                # 灾备环境Org
-            space: “dev”            # 灾备环境Space
-            apps: [“s3"]  # 灾备环境应用列表
+            username: ${{ secrets.CF_USERNAME }}
+            password: ${{ secrets.CF_PASSWORD }}
+            org: "backup-org"                # 灾备环境Org
+            space: "backup-space"            # 灾备环境Space
+            apps: ["s3"]  # 灾备环境应用列表
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,4 +61,3 @@ jobs:
         run: |
           echo "✅ 当前运行状态:"
           cf apps | grep -E "name|requested state"
-
