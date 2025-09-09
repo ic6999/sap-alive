@@ -19,17 +19,17 @@ jobs:
         env_name: ["production-sg", "dr-us"]
         include:
           - env_name: "production-sg"
-            api_url: ${{ secrets.CF_API_SG }}
-            username: ${{ secrets.CF_USERNAME }}
-            password: ${{ secrets.CF_PASSWORD }}
+            api_url: https://api.cf.ap21.hana.ondemand.com
+            username: antidanatoritania@gmail.com
+            password: Hh090909
             org: "fde1f680trial"
             space: "dev"
             apps: '["iSAP"]'  # 必须转为JSON字符串
             
           - env_name: "dr-us"
-            api_url: ${{ secrets.CF_API_US }}
-            username: ${{ secrets.CF_USERNAME }}
-            password: ${{ secrets.CF_PASSWORD }}
+            api_url: https://api.cf.us10-001.hana.ondemand.com
+            username: antidanatoritania@gmail.com
+            password: Hh090909
             org: "t2-mcekz8t8"
             space: "dev"
             apps: '["s3"]'
