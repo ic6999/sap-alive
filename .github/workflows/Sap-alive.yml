@@ -3,9 +3,9 @@ name: Restart SAP BTP Apps (Smart Restart)
 on:
   schedule:
     # 每天UTC时间0:10和0:30执行（北京时间8:10和8:30）
-    - cron: '10 0 * * *'    # 每天0:10 UTC
-    - cron: '10 1 * * *'    # 
-    - cron: '0 */1 * * *'   #every 3 hours
+    #- cron: '10 0 * * *'    # 每天0:10 UTC
+    - cron: '3 4 * * *'    # 
+    #- cron: '0 */1 * * *'   #every 3 hours
   workflow_dispatch:        # 允许手动触发
 
 env:
