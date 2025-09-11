@@ -2,9 +2,9 @@ name: SAP-VPN保活-ALL (by ic6)
 
 on:
   schedule:
-    # 每天8:10执行（UTC时间）
+    # 每天8:15执行（UTC时间）
     - cron: '15 0 * * *'
-    - cron: '25 3 * * *'
+    - cron: '50 0 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
