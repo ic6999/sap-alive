@@ -30,5 +30,3 @@ jobs:
           # 直接重启应用
           cf restart "iSAP"
           echo "✅ iSAP 重启命令已执行"
-
-  
