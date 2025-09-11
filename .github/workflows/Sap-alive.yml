@@ -2,10 +2,9 @@ name: SAP-BTP节点自动重启
 
 on:
   schedule:
-    # 每天定时执行UTC
-    - cron: '15 0 * * *'    #每天8:15
-    - cron: '50 0 * * *'    # 
-  #  - cron: '0 10 * * *'    #每天18:0
+    # 每天定时执行UTC时间
+    - cron: '15 0 * * *'    # 对应UTC 0:15，北京时间8:15
+    - cron: '50 0 * * *'    # 对应UTC 0:50，北京时间8:50
   workflow_dispatch:        # 允许手动触发
 
 env:
@@ -26,6 +25,9 @@ jobs:
           echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
           sudo apt-get update
           sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli
+
+      - name: Install jq for JSON parsing
+        run: sudo apt-get install -y jq
 
       # 新加坡环境智能重启
       - name: Smart Restart iSAP (Singapore)
@@ -71,12 +73,11 @@ jobs:
               if cf restart "iSAP"; then
                 echo "✅ 重启成功"
                 echo "status=restart_success" >> $GITHUB_OUTPUT
-                cf target
                 exit 0
               fi
               sleep 5
             done
-            echo "::error::重启失败"
+            echo "::error::重启失败，已达最大重试次数"
             echo "status=restart_failed" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -125,12 +126,11 @@ jobs:
               if cf restart "s3"; then
                 echo "✅ 重启成功"
                 echo "status=restart_success" >> $GITHUB_OUTPUT
-                cf target
                 exit 0
               fi
               sleep 5
             done
-            echo "::error::重启失败"
+            echo "::error::重启失败，已达最大重试次数"
             echo "status=restart_failed" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -140,12 +140,13 @@ jobs:
         if: always()
         run: |
           echo "=== 智能重启报告 ==="
-          echo "新加坡环境: ${{ steps.smart-restart-sg.outputs.status || '未执行' }}"
-          echo "美国环境: ${{ steps.smart-restart-us.outputs.status || '未执行' }}"
-          echo "工作流状态: ${{ job.status }}"
+          echo "新加坡环境状态: ${{ steps.smart-restart-sg.outputs.status || '未执行或未设置状态' }}"
+          echo "美国环境状态: ${{ steps.smart-restart-us.outputs.status || '未执行或未设置状态' }}"
+          echo "工作流整体状态: ${{ job.status }}"
           
-          # 失败状态码传递
-          if [[ "${{ job.status }}" == "failure" ]]; then
-            echo "::error::检测到失败任务"
+          # 如果任一环境最终失败，则标记该步骤失败
+          if [[ "${{ steps.smart-restart-sg.outputs.status }}" == "restart_failed" ]] || [[ "${{ steps.smart-restart-sg.outputs.status }}" == "login_failed" ]] || \
+             [[ "${{ steps.smart-restart-us.outputs.status }}" == "restart_failed" ]] || [[ "${{ steps.smart-restart-us.outputs.status }}" == "login_failed" ]]; then
+            echo "::error::至少有一个环境的重启任务失败"
             exit 1
           fi
