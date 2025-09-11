@@ -1,4 +1,4 @@
-name: SAP-BTP 应用重启
+name: SAP-SG 应用重启
 
 on:
   schedule:
