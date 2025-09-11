@@ -36,9 +36,18 @@ jobs:
           # 重启单个应用
           cf restart "s3"
 
-          # 重启多个应用（按需扩展）
-          # cf restart "your-app-name-2"
-          # cf restart "your-app-name-3"
 
-          # 或者动态获取并重启所有应用（谨慎使用！）
-          # cf apps | awk '/started/{print $1}' | xargs -n 1 cf restart
+      - name: Login to SG
+        env:
+          CF_API_URL: https://api.cf.ap21.hana.ondemand.com  # 替换为你的API端点
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}           # GitHub Secrets存储凭据
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+          CF_ORG: fde1f680trial
+          CF_SPACE: dev
+        run: |
+          cf login -a $CF_API_URL -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORG -s $CF_SPACE
+
+      - name: Restart Apps
+        run: |
+          # 重启单个应用
+          cf restart "iSAP"  
