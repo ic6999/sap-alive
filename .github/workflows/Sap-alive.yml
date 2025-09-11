@@ -1,152 +1,115 @@
-name: SAP-BTP节点自动重启 
+name: SAP-BTP节点智能重启
 
 on:
   schedule:
-    # 每天定时执行UTC时间
-    - cron: '15 0 * * *'    # 对应UTC 0:15，北京时间8:15
-    - cron: '50 0 * * *'    # 对应UTC 0:50，北京时间8:50
+    - cron: '15 0 * * *'    # UTC时间每天0:15（北京时间8:15）
+    - cron: '50 0 * * *'    # UTC时间每天0:50（北京时间8:50）
   workflow_dispatch:        # 允许手动触发
 
 env:
-  CF_CLI_VERSION: "8"            # 明确指定CF CLI版本
-  HEALTH_CHECK_INTERVAL: "300"   # 5分钟内跳过健康应用（秒）
-  MAX_RETRY: "2"                 # 最大重试次数
+  CF_CLI_VERSION: "8"
+  HEALTH_CHECK_INTERVAL: "300"
+  MAX_RETRY: "2"
 
 jobs:
-  restart-apps:
+  # 新加坡环境独立作业
+  restart-singapore:
     runs-on: ubuntu-latest
+    environment: singapore # 可选：在GitHub仓库设置中配置对应环境及其secrets
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install CF CLI (v${{ env.CF_CLI_VERSION }})
+      - name: Install CF CLI and jq
         run: |
           wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
           echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
           sudo apt-get update
-          sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli
+          sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli jq
 
-      - name: Install jq for JSON parsing
-        run: sudo apt-get install -y jq
-
-      # 新加坡环境智能重启
       - name: Smart Restart iSAP (Singapore)
-        id: smart-restart-sg
         env:
           CF_API_URL: ${{ secrets.CF_API_SG }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_TRACE: "true"
+          CF_ORG: "fde1f680trial"
+          CF_SPACE: "dev"
         run: |
-          echo "=== 新加坡环境智能检测 ==="
-          
-          # 登录环境
-          if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-              -o "fde1f680trial" -s "dev" --skip-ssl-validation; then
-            echo "::error::登录失败"
-            echo "status=login_failed" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-          # 获取应用状态
-          APP_GUID=$(cf app "iSAP" --guid 2>/dev/null)
-          LAST_EVENT=$(cf events "iSAP" --json 2>/dev/null | jq -r '.resources[0].created_at' || echo "")
-          
-          # 健康检查逻辑
-          if [[ -z "$APP_GUID" ]]; then
-            echo "🆘 应用不存在，需要部署"
-            NEED_RESTART=true
-          elif [[ "$LAST_EVENT" != "" ]] && \
-               [[ $(date +%s -d "$LAST_EVENT") -gt $(($(date +%s) - $HEALTH_CHECK_INTERVAL)) ]]; then
-            echo "✅ 应用最近 ${HEALTH_CHECK_INTERVAL} 秒内有活动，跳过重启"
-            echo "status=skipped_healthy" >> $GITHUB_OUTPUT
-            exit 0
+          echo "=== 开始处理新加坡环境 ==="
+          # 简化逻辑：尝试登录并执行重启，捕获任何错误
+          if cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE" --skip-ssl-validation; then
+            echo "✅ 登录成功"
+            
+            # 检查应用是否存在
+            if cf app "iSAP" > /dev/null 2>&1; then
+              echo "🔄 应用 iSAP 存在，尝试重启..."
+              # 简单重试循环
+              for i in $(seq 1 $MAX_RETRY); do
+                if cf restart "iSAP"; then
+                  echo "✅ 重启成功 (第 $i 次尝试)"
+                  exit 0
+                fi
+                echo "⚠️ 重启失败 (第 $i 次尝试)，5秒后重试..."
+                sleep 5
+              done
+              echo "❌ 错误：重启 iSAP 失败，已达最大重试次数"
+              exit 1
+            else
+              echo "❌ 错误：应用 iSAP 在新加坡环境中不存在"
+              exit 1
+            fi
           else
-            echo "🔄 检测到应用需要重启"
-            NEED_RESTART=true
-          fi
-
-          # 执行重启（带重试机制）
-          if [[ "$NEED_RESTART" == "true" ]]; then
-            for i in $(seq 1 $MAX_RETRY); do
-              echo "⏳ 尝试重启 (第 $i 次)"
-              if cf restart "iSAP"; then
-                echo "✅ 重启成功"
-                echo "status=restart_success" >> $GITHUB_OUTPUT
-                exit 0
-              fi
-              sleep 5
-            done
-            echo "::error::重启失败，已达最大重试次数"
-            echo "status=restart_failed" >> $GITHUB_OUTPUT
+            echo "❌ 错误：登录新加坡环境失败"
             exit 1
           fi
 
-      # 美国环境智能重启
+  # 美国环境独立作业
+  restart-usa:
+    runs-on: ubuntu-latest
+    environment: usa # 可选：在GitHub仓库设置中配置对应环境及其secrets
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install CF CLI and jq
+        run: |
+          wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
+          echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
+          sudo apt-get update
+          sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli jq
+
       - name: Smart Restart s3 (USA)
-        id: smart-restart-us
         env:
           CF_API_URL: ${{ secrets.CF_API_US }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_TRACE: "true"
+          CF_ORG: "t2_t2-mcekz8t8"
+          CF_SPACE: "dev"
         run: |
-          echo "=== 美国环境智能检测 ==="
-          
-          # 登录环境
-          if ! cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" \
-              -o "t2_t2-mcekz8t8" -s "dev" --skip-ssl-validation; then
-            echo "::error::登录失败"
-            echo "status=login_failed" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-          # 获取应用状态
-          APP_GUID=$(cf app "s3" --guid 2>/dev/null)
-          LAST_EVENT=$(cf events "s3" --json 2>/dev/null | jq -r '.resources[0].created_at' || echo "")
-          
-          # 健康检查逻辑
-          if [[ -z "$APP_GUID" ]]; then
-            echo "🆘 应用不存在，需要部署"
-            NEED_RESTART=true
-          elif [[ "$LAST_EVENT" != "" ]] && \
-               [[ $(date +%s -d "$LAST_EVENT") -gt $(($(date +%s) - $HEALTH_CHECK_INTERVAL)) ]]; then
-            echo "✅ 应用最近 ${HEALTH_CHECK_INTERVAL} 秒内有活动，跳过重启"
-            echo "status=skipped_healthy" >> $GITHUB_OUTPUT
-            exit 0
+          echo "=== 开始处理美国环境 ==="
+          # 简化逻辑：尝试登录并执行重启，捕获任何错误
+          if cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE" --skip-ssl-validation; then
+            echo "✅ 登录成功"
+            
+            # 检查应用是否存在
+            if cf app "s3" > /dev/null 2>&1; then
+              echo "🔄 应用 s3 存在，尝试重启..."
+              # 简单重试循环
+              for i in $(seq 1 $MAX_RETRY); do
+                if cf restart "s3"; then
+                  echo "✅ 重启成功 (第 $i 次尝试)"
+                  exit 0
+                fi
+                echo "⚠️ 重启失败 (第 $i 次尝试)，5秒后重试..."
+                sleep 5
+              done
+              echo "❌ 错误：重启 s3 失败，已达最大重试次数"
+              exit 1
+            else
+              echo "❌ 错误：应用 s3 在美国环境中不存在"
+              exit 1
+            fi
           else
-            echo "🔄 检测到应用需要重启"
-            NEED_RESTART=true
-          fi
-
-          # 执行重启（带重试机制）
-          if [[ "$NEED_RESTART" == "true" ]]; then
-            for i in $(seq 1 $MAX_RETRY); do
-              echo "⏳ 尝试重启 (第 $i 次)"
-              if cf restart "s3"; then
-                echo "✅ 重启成功"
-                echo "status=restart_success" >> $GITHUB_OUTPUT
-                exit 0
-              fi
-              sleep 5
-            done
-            echo "::error::重启失败，已达最大重试次数"
-            echo "status=restart_failed" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-      # 智能报告生成
-      - name: Smart Report
-        if: always()
-        run: |
-          echo "=== 智能重启报告 ==="
-          echo "新加坡环境状态: ${{ steps.smart-restart-sg.outputs.status || '未执行或未设置状态' }}"
-          echo "美国环境状态: ${{ steps.smart-restart-us.outputs.status || '未执行或未设置状态' }}"
-          echo "工作流整体状态: ${{ job.status }}"
-          
-          # 如果任一环境最终失败，则标记该步骤失败
-          if [[ "${{ steps.smart-restart-sg.outputs.status }}" == "restart_failed" ]] || [[ "${{ steps.smart-restart-sg.outputs.status }}" == "login_failed" ]] || \
-             [[ "${{ steps.smart-restart-us.outputs.status }}" == "restart_failed" ]] || [[ "${{ steps.smart-restart-us.outputs.status }}" == "login_failed" ]]; then
-            echo "::error::至少有一个环境的重启任务失败"
+            echo "❌ 错误：登录美国环境失败"
             exit 1
           fi
