@@ -2,9 +2,9 @@ name: SAP-VPN保活-ALL (by ic6)
 
 on:
   schedule:
-    # 每天8:15执行（UTC时间）
+    # 每天8:15执行（北京时间）
     - cron: '15 0 * * *'
-    - cron: '50 0 * * *'
+    - cron: '30 0 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Restart Apps
         run: |
-          # 重启单个应用
+          # 重启应用
           cf restart "s3"
 
 
@@ -49,5 +49,5 @@ jobs:
 
       - name: Restart Apps
         run: |
-          # 重启单个应用
+          # 重启应用
           cf restart "iSAP"  
