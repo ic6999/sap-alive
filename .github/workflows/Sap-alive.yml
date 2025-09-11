@@ -8,11 +8,11 @@ on:
 
 env:
   CF_CLI_VERSION: "8"
-  HEALTH_CHECK_INTERVAL: "300"
+  HEALTH_CHECK_INTERVAL: "300"   # 5分钟内跳过健康应用（秒）
   MAX_RETRY: "2"
 
 jobs:
-  # 新加坡环境独立作业
+  # 新加坡环境独立任务
   restart-singapore:
     runs-on: ubuntu-latest
     environment: singapore # 可选：在GitHub仓库设置中配置对应环境及其secrets
@@ -36,13 +36,15 @@ jobs:
           CF_SPACE: "dev"
         run: |
           echo "=== 开始处理新加坡环境 ==="
-          # 简化逻辑：尝试登录并执行重启，捕获任何错误
+          
+          # 登录环境
           if cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE" --skip-ssl-validation; then
-            echo "✅ 登录成功"
+            echo "✅ 登录新加坡环境成功"
             
             # 检查应用是否存在
             if cf app "iSAP" > /dev/null 2>&1; then
               echo "🔄 应用 iSAP 存在，尝试重启..."
+              
               # 简单重试循环
               for i in $(seq 1 $MAX_RETRY); do
                 if cf restart "iSAP"; then
@@ -63,7 +65,7 @@ jobs:
             exit 1
           fi
 
-  # 美国环境独立作业
+  # 美国环境独立任务（基于你提供的正常代码）
   restart-usa:
     runs-on: ubuntu-latest
     environment: usa # 可选：在GitHub仓库设置中配置对应环境及其secrets
@@ -71,14 +73,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install CF CLI and jq
+      - name: Install CF CLI
         run: |
           wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
           echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
           sudo apt-get update
-          sudo apt-get install -y cf${{ env.CF_CLI_VERSION }}-cli jq
+          sudo apt-get install -y cf-cli
 
-      - name: Smart Restart s3 (USA)
+      - name: Login to SAP BTP (USA)
         env:
           CF_API_URL: ${{ secrets.CF_API_US }}
           CF_USERNAME: ${{ secrets.CF_USERNAME }}
@@ -86,30 +88,40 @@ jobs:
           CF_ORG: "t2_t2-mcekz8t8"
           CF_SPACE: "dev"
         run: |
-          echo "=== 开始处理美国环境 ==="
-          # 简化逻辑：尝试登录并执行重启，捕获任何错误
           if cf login -a "$CF_API_URL" -u "$CF_USERNAME" -p "$CF_PASSWORD" -o "$CF_ORG" -s "$CF_SPACE" --skip-ssl-validation; then
-            echo "✅ 登录成功"
-            
-            # 检查应用是否存在
-            if cf app "s3" > /dev/null 2>&1; then
-              echo "🔄 应用 s3 存在，尝试重启..."
-              # 简单重试循环
-              for i in $(seq 1 $MAX_RETRY); do
-                if cf restart "s3"; then
-                  echo "✅ 重启成功 (第 $i 次尝试)"
-                  exit 0
-                fi
-                echo "⚠️ 重启失败 (第 $i 次尝试)，5秒后重试..."
-                sleep 5
-              done
-              echo "❌ 错误：重启 s3 失败，已达最大重试次数"
-              exit 1
-            else
-              echo "❌ 错误：应用 s3 在美国环境中不存在"
-              exit 1
-            fi
+            echo "✅ 登录美国环境成功"
           else
-            echo "❌ 错误：登录美国环境失败"
+            echo "❌ 登录美国环境失败"
             exit 1
+          fi
+
+      - name: Restart Apps (USA)
+        run: |
+          # 重启应用
+          if cf restart "s3"; then
+            echo "✅ 应用 s3 重启成功"
+          else
+            echo "❌ 应用 s3 重启失败"
+            exit 1
+          fi
+
+  # 汇总报告
+  generate-report:
+    runs-on: ubuntu-latest
+    needs: [restart-singapore, restart-usa]
+    if: always()
+    steps:
+      - name: Workflow Status Report
+        run: |
+          echo "=== 工作流执行报告 ==="
+          echo "新加坡环境状态: ${{ needs.restart-singapore.result }}"
+          echo "美国环境状态: ${{ needs.restart-usa.result }}"
+          echo "工作流完成时间: $(date)"
+          
+          # 如果有任务失败，则标记此步骤为失败
+          if [[ "${{ needs.restart-singapore.result }}" == "failure" ]] || [[ "${{ needs.restart-usa.result }}" == "failure" ]]; then
+            echo "❌ 至少有一个环境的任务执行失败"
+            exit 1
+          else
+            echo "✅ 所有环境任务执行成功"
           fi
