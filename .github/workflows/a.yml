@@ -1,4 +1,4 @@
-name: SAP-VPN保活-ALL (by ic6)
+name: VPN保活-ALL
 
 on:
   schedule:
