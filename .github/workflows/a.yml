@@ -1,4 +1,4 @@
-name: VPN-ALIVE-ALL
+name: SAP-ALIVE-ALL
 
 on:
   schedule:
