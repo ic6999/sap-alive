@@ -1,0 +1,167 @@
+在 GitHub Actions 中批量删除 workflow 运行记录的方法主要有以下几种：
+
+方法一：通过 GitHub 网页界面手动删除（少量记录）
+
+这是最简单直接的方法，适用于需要立即删除少量记录的情况。
+
+1. 进入您的 GitHub 仓库。
+
+2. 点击 Actions 标
+3. 在左侧边栏中，点击 History 或 All workflows，您将看到所有的 workflow 运行记录列表。
+
+4. 点击您想要删除的 workflow 运行记录旁边的复选框，可以多选。
+
+5. 页面顶部会出现一个工具栏，点击 Delete 按钮。
+
+6. 在确认对话框中，再次点击 Delete 即可。
+
+优点：简单直观，无需任何工具。
+
+缺点：效率低下，无法批量选择大量记录（每页最多只能选择并删除 30 条）。
+
+
+------
+
+方法二：使用 GitHub CLI 工具 (gh) 批量删除（推荐）
+
+GitHub 官方命令行工具 gh 提供了强大的 API 操作能力，是批量删除的最佳选择。
+
+1. 安装和设置 GitHub CLI
+
+首先，确保您已安装 gh 并登录认证：
+
+# 安装 gh (例如在 macOS 上用 Homebrew)
+brew install gh
+
+# 登录认证，按照提示操作
+gh auth login
+
+
+2. 编写删除脚本
+
+您可以创建一个简单的 Shell 脚本 (如 delete_workflows.sh) 来实现批量删除。
+
+示例脚本 1：删除所有失败的运行记录
+
+#!/bin/bash
+
+# 设置仓库变量，格式：OWNER/REPO
+REPO="your_username/your_repository"
+
+# 获取所有失败 workflow run 的 ID
+run_ids=$(gh api repos/$REPO/actions/runs --paginate -q '.workflow_runs[] | select(.conclusion == "failure") | .id')
+
+# 循环删除每一个
+for run_id in $run_ids; do
+    echo "Deleting run ID: $run_id"
+    gh api repos/$REPO/actions/runs/$run_id -X DELETE --silent
+done
+
+
+示例脚本 2：删除指定 Workflow 的所有历史记录
+
+#!/bin/bash
+
+REPO="your_username/your_repository"
+WORKFLOW_NAME="ci.yml" # 你的 workflow 文件名
+
+# 先获取该 workflow 的 ID
+WORKFLOW_ID=$(gh api repos/$REPO/actions/workflows --paginate -q ".workflows[] | select(.name == \"$WORKFLOW_NAME\") | .id")
+
+# 获取该 workflow 的所有运行记录 ID
+run_ids=$(gh api repos/$REPO/actions/workflows/$WORKFLOW_ID/runs --paginate -q '.workflow_runs[].id')
+
+for run_id in $run_ids; do
+    echo "Deleting run ID: $run_id from workflow $WORKFLOW_NAME"
+    gh api repos/$REPO/actions/runs/$run_id -X DELETE --silent
+    # 为了避免触发 API 速率限制，可以在每次删除后短暂休眠
+    sleep 0.5
+done
+
+
+示例脚本 3：删除超过 30 天的所有运行记录
+
+#!/bin/bash
+
+REPO="your_username/your_repository"
+CUTOFF_DATE=$(date -u -d '30 days ago' +'%Y-%m-%dT%H:%M:%SZ') # 计算 30 天前的日期
+
+# 获取所有在截止日期之前创建的运行记录 ID
+run_ids=$(gh api repos/$REPO/actions/runs --paginate -q ".workflow_runs[] | select(.created_at < \"$CUTOFF_DATE\") | .id")
+
+for run_id in $run_ids; do
+    echo "Deleting old run ID: $run_id"
+    gh api repos/$REPO/actions/runs/$run_id -X DELETE --silent
+    sleep 0.5
+done
+
+
+使用方法：
+
+1. 将脚本中的 your_username/your_repository 替换为您的仓库地址。
+
+2. 在终端中运行脚本：bash delete_workflows.sh
+
+优点：
+
+• 非常强大和灵活，可以基于状态、时间、特定 workflow 等条件进行过滤和删除。
+
+• 可以处理大量记录。
+
+• 易于自动化。
+
+缺点：
+
+• 需要安装命令行工具并进行认证。
+
+• 有 API 速率限制（对于认证请求，每小时最多 5000 次，通常足够使用），脚本中的 sleep 命令就是为了缓解这个问题。
+
+
+------
+
+方法三：直接使用 curl 调用 GitHub API
+
+如果您不想安装 gh，也可以直接使用 curl 和 GitHub API，但这需要您自己处理认证和 JSON 解析。
+
+示例：删除单个运行记录
+
+# 设置变量
+REPO_OWNER="your_username"
+REPO_NAME="your_repository"
+RUN_ID="123456789" # 要删除的运行记录 ID
+GH_TOKEN="your_github_personal_access_token"
+
+# 调用 API 进行删除
+curl -L \
+  -X DELETE \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $GH_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/runs/$RUN_ID"
+
+
+您需要编写类似的循环逻辑来批量获取和删除，并使用 jq 等工具来解析 JSON。这种方法比使用 gh 更复杂。
+
+
+------
+
+重要注意事项和常见问题
+
+1. 权限要求：您必须是仓库的管理员 (Admin) 才有权限删除 workflow 运行记录。
+
+2. Personal Access Token (PAT)：如果使用 API 方式，需要创建一个具有 repo 权限的 PAT。在 gh 登录时已经帮您处理了，如果使用 curl，则需要手动设置。
+
+3. API 速率限制：GitHub API 有请求次数限制。未经认证的请求限制很严格，认证后的请求限额高很多（每小时 5000 次）。在脚本中加入延迟 (sleep) 是避免达到限额的好 practice。
+
+4. 无法恢复：删除操作是永久性的，无法撤销。请谨慎操作，最好先在测试仓库中尝试。
+
+5. 日志存储：删除运行记录也会删除其日志和产物，但不会影响代码或当前的 workflow 定义。
+
+总结
+
+方法	适用场景	优点	缺点
+网页界面	快速删除少量（<30条）记录	简单，无需工具	效率极低，无法真正批量
+GitHub CLI (gh)	批量删除大量记录	功能强大、灵活、高效	需安装工具和简单编程
+cURL API	无需安装 gh 的环境	最底层控制	复杂，需处理认证和JSON
+
+对于绝大多数需要批量删除的场景，强烈推荐使用 GitHub CLI (gh) 的方法。它结合了易用性和强大的功能，是完成这项任务的最佳工具。
