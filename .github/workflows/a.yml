@@ -1,8 +1,8 @@
-name: VPN保活-ALL
+name: VPN-ALIVE-ALL
 
 on:
   schedule:
-    # 每天8:15执行（北京时间）
+    # 每天UTC0:15执行（北京时间+8）
     - cron: '15 0 * * *'
     - cron: '0 1 * * *'
     - cron: '0 10 * * *'
@@ -25,7 +25,7 @@ jobs:
       - name: Login to US
         env:
           CF_API_URL: https://api.cf.us10-001.hana.ondemand.com  # 替换为你的API端点
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}           # GitHub Secrets存储凭据
+          CF_USERNAME: ${{ secrets.CF_USERNAME }}     # 在gh-setting-secrets填入服务器帐号信息
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
           CF_ORG: t2_t2-mcekz8t8
           CF_SPACE: dev
