@@ -5,6 +5,7 @@ on:
     # 每天8:15执行（北京时间）
     - cron: '15 0 * * *'
     - cron: '50 0 * * *'
+    - cron: '25 1 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
