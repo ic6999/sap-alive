@@ -99,6 +99,8 @@ CF_SPACE=空间名称
 CF_APP=项目名称
 3. 测试：主控页停止BTP，github手动run workflow，若BTP重新启动即成功。（必须手动运行一次才能激活自动化工作流！
 https://github.com/ic6999/sap-alive/actions/workflows/main.yml
+
+
 【HF保活脚本】
 
 huggingface是全球最大的AI模型托管平台厂商。Hugging Face 的 Spaces 平台为用户提供了一个免费的 CPU 空间，默认是 2 个 vCPU 和 16GB 内存，并且提供 50GB 的临时磁盘空间。但超48小时未活跃即进入休眠状态，重启后必须重新部署。此代码极简，只有一个步骤，只执行一个 curl 命令，用于访问Space首页，是最简单的"保持活跃"的信号。Hugging Face 会将该访问识别为一次有效活动，从而重置Space的休眠倒计时。
