@@ -101,10 +101,10 @@ CF_APP=项目名称
 https://github.com/ic6999/sap-alive/actions/workflows/main.yml
 
 
+
 【HF保活脚本】
 
 huggingface是全球最大的AI模型托管平台厂商。Hugging Face 的 Spaces 平台为用户提供了一个免费的 CPU 空间，默认是 2 个 vCPU 和 16GB 内存，并且提供 50GB 的临时磁盘空间。但超48小时未活跃即进入休眠状态，重启后必须重新部署。此代码极简，只有一个步骤，只执行一个 curl 命令，用于访问Space首页，是最简单的"保持活跃"的信号。Hugging Face 会将该访问识别为一次有效活动，从而重置Space的休眠倒计时。
-https://raw.githubusercontent.com/ic6999/hug-alive/refs/heads/main/.github/workflows/main.yml
 
 部署脚本：
 bash <(curl -l -s https://raw.githubusercontent.com/zzzhhh1/free-vps-py/refs/heads/main/test.sh)
