@@ -103,7 +103,7 @@ https://github.com/ic6999/sap-alive/actions/workflows/main.yml
 方案三：
 
 📌 Cloudflare自动拉起代码：
-https://gist.github.com/uncleluogithu...
+[https://gist.github.com/uncleluogithu...](https://gist.github.com/uncleluogithub/083775a84afbff11f1057695ce29fddb)
 
 📌 五福临门参数：
 
@@ -111,8 +111,8 @@ https://gist.github.com/uncleluogithu...
  
 🇺🇸US10-001（美国）： 
 
-CF_API：https://api.cf.us10-001.hana.ondemand...
-UAA_URL：https://uaa.cf.us10-001.hana.ondemand...
+CF_API：https://api.cf.us10-001.hana.ondemand.com
+UAA_URL：https://uaa.cf.us10-001.hana.ondemand.com
 
 🇸🇬AP21（新加坡）：
  
