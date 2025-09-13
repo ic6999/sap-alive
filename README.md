@@ -100,6 +100,46 @@ CF_APP=项目名称
 3. 测试：主控页停止BTP，github手动run workflow，若BTP重新启动即成功。（必须手动运行一次才能激活自动化工作流！
 https://github.com/ic6999/sap-alive/actions/workflows/main.yml
 
+方案三：
+
+📌 Cloudflare自动拉起代码：
+https://gist.github.com/uncleluogithu...
+
+📌 五福临门参数：
+
+✅ 区域（两种最常用）
+ 
+🇺🇸US10-001（美国）： 
+
+CF_API：https://api.cf.us10-001.hana.ondemand...
+UAA_URL：https://uaa.cf.us10-001.hana.ondemand...
+
+🇸🇬AP21（新加坡）：
+ 
+CF_API：https://api.cf.ap21.hana.ondemand.com
+UAA_URL：https://uaa.cf.ap21.hana.ondemand.com
+
+❗ 注意
+ • 区域：api.cf.ap21.hana.ondemand.com 为新加坡 AP21微软Azure云；api.cf.us10-001.hana.ondemand.com 为美国US10-001亚马逊AWS云；其他区域请替换为你子账号的 SAP CF API。
+
+
+✅ CF 平台用户名与密码（你登录 SAP BTP 的邮箱账号/密码）
+ 
+CF_USERNAME （邮箱）
+CF_PASSWORD（登陆密码）
+
+✅ 应用唯一标识
+
+APP_GUID
+
+先登陆BTP后用命令行查看APP的GUID：
+
+cf app 你的AppName --guid
+
+📌 KV空间绑定变量名称：START_LOCK
+
+📌Cron：只加一条：* * * * * 
+
 
 
 【HF保活脚本】
