@@ -1,0 +1,59 @@
+name: Restart Hugging Face Space Daily
+
+on:
+  schedule:
+    # 每天UTC时间0:00运行 (北京时间8:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  restart-space:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restart Hugging Face Space
+        run: |
+          # 获取当前日期时间用于日志
+          echo "Restart attempt at $(date -u)"
+
+          # 使用API重启Hugging Face Space
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            "https://huggingface.co/api/spaces/ic6/kk/restart" \
+            -H "Content-Type: application/json")
+
+          # 检查响应
+          if echo "$RESPONSE" | grep -q '"status":"restarting"'; then
+            echo "Space restart initiated successfully"
+          else
+            echo "Failed to restart space. Response: $RESPONSE"
+            exit 1
+          fi
+
+          # 等待一段时间确保重启完成
+          sleep 30
+
+          # 检查Space状态
+          STATUS=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            "https://huggingface.co/api/spaces/your-username/your-space-name" | jq -r '.status')
+
+          echo "Current space status: $STATUS"
+
+      - name: Run script after restart (optional)
+        run: |
+          # 等待Space完全启动
+          sleep 60
+          
+          # 获取Space的SSH域名
+          SSH_URL=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            "https://huggingface.co/api/spaces/ic6/kk" | jq -r '.sshUrl')
+          
+          # 通过SSH运行脚本 (需要Space支持SSH)
+          ssh $SSH_URL "cd /usr/src/app && bash files/script.sh --auto"
+
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
