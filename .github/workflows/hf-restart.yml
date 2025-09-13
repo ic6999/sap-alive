@@ -2,9 +2,8 @@ name: Restart Hugging Face Space Daily
 
 on:
   schedule:
-    # 每天UTC时间0:00运行 (北京时间8:00)
     - cron: '0 0 * * *'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   restart-space:
@@ -15,45 +14,70 @@ jobs:
 
       - name: Restart Hugging Face Space
         run: |
-          # 获取当前日期时间用于日志
           echo "Restart attempt at $(date -u)"
-
-          # 使用API重启Hugging Face Space
-          RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
-            "https://huggingface.co/api/spaces/ic6/kk/restart" \
-            -H "Content-Type: application/json")
-
-          # 检查响应
-          if echo "$RESPONSE" | grep -q '"status":"restarting"'; then
-            echo "Space restart initiated successfully"
-          else
-            echo "Failed to restart space. Response: $RESPONSE"
-            exit 1
-          fi
-
-          # 等待一段时间确保重启完成
-          sleep 30
-
-          # 检查Space状态
+          
+          # 首先检查Space状态
           STATUS=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
-            "https://huggingface.co/api/spaces/your-username/your-space-name" | jq -r '.status')
-
+            "https://huggingface.co/api/spaces/ic6,kk" | jq -r '.stage')
+          
           echo "Current space status: $STATUS"
-
-      - name: Run script after restart (optional)
-        run: |
-          # 等待Space完全启动
-          sleep 60
           
-          # 获取Space的SSH域名
-          SSH_URL=$(curl -s \
+          # 如果Space正在构建，等待并重试
+          MAX_RETRIES=3
+          RETRY_DELAY=60
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_RETRIES ]; do
+            if [ "$STATUS" = "RUNNING_BUILDING" ]; then
+              echo "Space is building, waiting $RETRY_DELAY seconds before retry (attempt $ATTEMPT/$MAX_RETRIES)..."
+              sleep $RETRY_DELAY
+              STATUS=$(curl -s \
+                -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+                "https://huggingface.co/api/spaces/ic6,kk" | jq -r '.stage')
+              ATTEMPT=$((ATTEMPT+1))
+            else
+              break
+            fi
+          done
+          
+          # 如果Space仍处于构建状态，退出并报错
+          if [ "$STATUS" = "RUNNING_BUILDING" ]; then
+            echo "Space is still building after $MAX_RETRIES attempts, cannot restart"
+            exit 1
+          fi
+          
+          # 发送重启请求
+          RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
-            "https://huggingface.co/api/spaces/ic6/kk" | jq -r '.sshUrl')
+            "https://huggingface.co/api/spaces/ic6,kk/restart" \
+            -H "Content-Type: application/json")
           
-          # 通过SSH运行脚本 (需要Space支持SSH)
-          ssh $SSH_URL "cd /usr/src/app && bash files/script.sh --auto"
-
+          echo "API Response: $RESPONSE"
+          
+          # 检查响应
+          if echo "$RESPONSE" | grep -q '"status":"restarting"' || 
+             echo "$RESPONSE" | grep -q '"stage":"RUNNING_BUILDING"'; then
+            echo "Space restart initiated successfully"
+          else
+            echo "Failed to restart space"
+            exit 1
+          fi
+          
+          # 等待并验证重启完成
+          echo "Waiting for restart to complete..."
+          sleep 30
+          
+          FINAL_STATUS=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            "https://huggingface.co/api/spaces/your-username/your-space-name" | jq -r '.stage')ic6,kk          
+          echo "Final space status: $FINAL_STATUS"
+          
+          if [ "$FINAL_STATUS" = "RUNNING_BUILDING" ] || [ "$FINAL_STATUS" = "RUNNING" ]; then
+            echo "Space restart completed successfully"
+          else
+            echo "Space restart may have failed"
+            exit 1
+          fi
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
