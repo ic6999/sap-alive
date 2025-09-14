@@ -1,81 +1,99 @@
 export default {
   async fetch(request, env, ctx) {
     try {
-      // 定义两个账号的配置（关联环境变量，可按需增加更多账号）
-      const accounts = [
-        {
-          // 账号1：US10-001 区域  
-          uaaUrl: "https://uaa.cf.us10-001.hana.ondemand.com/oauth/token",
-          apiUrl: "https://api.cf.us10-001.hana.ondemand.com",
-          username: env.SAP_USERNAME,
-          password: env.SAP_PASSWORD,
-          appGuid: env.US_SAP_APP_GUID
-        },
-        {
-          // 账号2：SG21 区域 
-          uaaUrl: "https://uaa.cf.ap21.hana.ondemand.com/oauth/token",
-          apiUrl: "https://api.cf.ap21.hana.ondemand.com",
-          username: env.SAP_USERNAME,
-          password: env.SAP_PASSWORD,
-          appGuid: env.SG_SAP_APP_GUID
-        }
-      ];
-
-      // 批量执行两个账号的应用重启
-      const results = await Promise.all(
-        accounts.map(async (account, index) => {
-          try {
-            // 1. 为当前账号获取 Token
-            const tokenResponse = await fetch(account.uaaUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": "Basic Y2Y6" // 固定值，Cloud Foundry 默认客户端
-              },
-              body: new URLSearchParams({
-                grant_type: "password",
-                username: account.username,
-                password: account.password,
-                scope: "cloud_controller.write"
-              })
-            });
-
-            if (!tokenResponse.ok) {
-              throw new Error(`账号${index+1} Token获取失败: ${await tokenResponse.text()}`);
-            }
-
-            const tokenData = await tokenResponse.json();
-            const accessToken = tokenData.access_token;
-            if (!accessToken) throw new Error(`账号${index+1}未获取到有效Token`);
-
-            // 2. 调用当前账号的应用重启 API
-            const restartResponse = await fetch(
-              `${account.apiUrl}/v3/apps/${account.appGuid}/actions/restart`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json"
-                }
-              }
-            );
-
-            if (restartResponse.ok) {
-              return `账号${index+1}：应用重启请求已发送`;
-            } else {
-              const errorDetails = await restartResponse.text();
-              return `账号${index+1}：重启失败 - ${errorDetails}`;
-            }
-          } catch (err) {
-            return `账号${index+1}：执行出错 - ${err.message}`;
-          }
-        })
-      );
-
-      // 返回所有账号的执行结果
-      return new Response(`批量重启结果：\n${results.join("\n")}`, { status: 200 });
+      // 调用核心重启逻辑并返回结果
+      const results = await batchRestartSAP(env);
+      return new Response(`批量重启结果（手动触发）：\n${results.join("\n")}`, { status: 200 });
     } catch (error) {
-      return new Response(`全局执行出错: ${error.message}`, { status: 500 });
+      return new Response(`全局执行出错（手动触发）: ${error.message}`, { status: 500 });
     }
+  },
+
+  async scheduled(event, env, ctx) {
+    // 确保异步重启任务完成
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const results = await batchRestartSAP(env);
+          console.log(`批量重启结果（定时触发）：\n${results.join("\n")}`);
+        } catch (error) {
+          console.error(`全局执行出错（定时触发）: ${error.message}`);
+        }
+      })()
+    );
   }
 };
+
+// 核心批量重启SAP函数（抽离为公共方法，供手动和定时触发调用）
+async function batchRestartSAP(env) {
+  // 定义两个账号的配置（关联环境变量）
+  const accounts = [
+    {
+      // 账号1：US10-001 区域  
+      uaaUrl: "https://uaa.cf.us10-001.hana.ondemand.com/oauth/token",
+      apiUrl: "https://api.cf.us10-001.hana.ondemand.com",
+      username: env.SAP_USERNAME,
+      password: env.SAP_PASSWORD,
+      appGuid: env.US_SAP_APP_GUID
+    },
+    {
+      // 账号2：SG21 区域 
+      uaaUrl: "https://uaa.cf.ap21.hana.ondemand.com/oauth/token",
+      apiUrl: "https://api.cf.ap21.hana.ondemand.com",
+      username: env.SAP_USERNAME,
+      password: env.SAP_PASSWORD,
+      appGuid: env.SG_SAP_APP_GUID
+    }
+  ];
+
+  // 批量执行两个账号的应用重启
+  return await Promise.all(
+    accounts.map(async (account, index) => {
+      try {
+        // 1. 为当前账号获取 Token
+        const tokenResponse = await fetch(account.uaaUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": "Basic Y2Y6" // Cloud Foundry 默认客户端
+          },
+          body: new URLSearchParams({
+            grant_type: "password",
+            username: account.username,
+            password: account.password,
+            scope: "cloud_controller.write"
+          })
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error(`Token获取失败: ${await tokenResponse.text()}`);
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+        if (!accessToken) throw new Error("未获取到有效Token");
+
+        // 2. 调用当前账号的应用重启 API
+        const restartResponse = await fetch(
+          `${account.apiUrl}/v3/apps/${account.appGuid}/actions/restart`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        if (restartResponse.ok) {
+          return `账号${index+1}：应用重启请求已发送`;
+        } else {
+          const errorDetails = await restartResponse.text();
+          return `账号${index+1}：重启失败 - ${errorDetails}`;
+        }
+      } catch (err) {
+        return `账号${index+1}：执行出错 - ${err.message}`;
+      }
+    })
+  );
+}
