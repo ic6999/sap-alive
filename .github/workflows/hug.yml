@@ -8,7 +8,7 @@ on:
 jobs:
   ping-space:
     #runs-on: ubuntu-latest
-    runs-on: sap-runner # 使用标签为self-hosted的Runner
+    runs-on: self-hosted # 使用标签为self-hosted的Runner
     steps:
       - name: Ping Hugging Face Space
         env:
