@@ -5,12 +5,13 @@ on:
     # SAP BTP SPACE每天0:0-10期间STOP
     # 重点每天UTC0:0-1执行，其他时间测试，可删除
     # github实际执行延迟可能超30分钟
-    - cron: '15 0-1 * * *'
+    - cron: '10 18 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
   restart-apps:
-    runs-on: ubuntu-latest
+    #runs-on: ubuntu-latest
+    runs-on: self-hosted # 使用标签为self-hosted的Runner
     steps:
       - name: Checkout
         uses: actions/checkout@v4
