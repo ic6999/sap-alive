@@ -2,7 +2,7 @@ name: Prevent HF Space Sleep
 
 on:
   schedule:
-    - cron: '25 18 * * *'  # 每天运行一次（3:50起床后检查🧐）
+    - cron: '40 18 * * *'  # 每天运行一次（3:50起床后检查🧐）
   workflow_dispatch:        # 允许手动触发
 
 jobs:
