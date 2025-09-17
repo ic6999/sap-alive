@@ -2,12 +2,13 @@ name: Prevent HF Space Sleep
 
 on:
   schedule:
-    - cron: '50 19 * * *'  # 每天运行一次（3:50起床后检查🧐）
+    - cron: '25 18 * * *'  # 每天运行一次（3:50起床后检查🧐）
   workflow_dispatch:        # 允许手动触发
 
 jobs:
   ping-space:
-    runs-on: ubuntu-latest
+    #runs-on: ubuntu-latest
+    runs-on: self-hosted # 使用标签为self-hosted的Runner
     steps:
       - name: Ping Hugging Face Space
         env:
