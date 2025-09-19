@@ -6,7 +6,8 @@ on:
     # 因github实际执行延迟可能超100分钟，提前一小时增加一次触发
     # 已在cloudflare worker:sap-restart设置8:12准时触发，此处为测试，可删除
    
-    - cron: '10 23,0 * * *'
+    - cron: '45 23 * * *'
+    - cron: '10 0 * * *'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
