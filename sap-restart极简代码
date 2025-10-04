@@ -1,5 +1,4 @@
-以下cloudflare worker项目为"SAP多区域应用监控“，请保留后台定时自动重启所有应用功能，设计一个前端交互界面替代原有简单确认提示页，主要功能：分区域帐号显示最后启动时间和当前状态，单独的手动重启、手动刷新按钮，全局的刷新按钮。
-原代码：=================
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
