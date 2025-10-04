@@ -1,0 +1,137 @@
+以下cloudflare worker项目为"SAP多区域应用监控“，请保留后台定时自动重启所有应用功能，设计一个前端交互界面替代原有简单确认提示页，主要功能：分区域帐号显示最后启动时间和当前状态，单独的手动重启、手动刷新按钮，全局的刷新按钮。
+原代码：=================
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const confirm = url.searchParams.get('confirm');
+
+    // 1. 未传入确认参数：返回带确认按钮的HTML页面（修复字符编码）
+    if (confirm?.toLowerCase() !== 'y') {
+      return new Response(
+        `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8"> <!-- 关键：设置UTF-8字符编码 -->
+          </head>
+          <body style="text-align: center; margin-top: 50px;">
+            <h2>⚠️ 批量重启SAP确认</h2>
+            <p>确认重启美国+新加坡两个区域SAP应用吗？</p>
+            <button 
+              style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
+              onclick="window.location.href = '${url.origin}?confirm=y'"
+            >
+              确认重启
+            </button>
+            <button 
+              style="padding: 10px 20px; margin-left: 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;"
+              onclick="document.body.innerHTML = '<h3>操作已取消</h3>'"
+            >
+              取消
+            </button>
+          </body>
+        </html>
+        `,
+        {
+          status: 200,
+          headers: { 'Content-Type': 'text/html; charset=UTF-8' } // 响应头补充编码
+        }
+      );
+    }
+
+    // 2. 已确认（传入?confirm=y）：执行核心重启逻辑
+    try {
+      const results = await batchRestartSAP(env);
+      return new Response(
+        `批量重启结果（手动触发）：\n${results.join("\n")}`,
+        { status: 200, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } }
+      );
+    } catch (error) {
+      return new Response(
+        `全局执行出错（手动触发）: ${error.message}`,
+        { status: 500, headers: { 'Content-Type': 'text/plain; charset=UTF-8' } }
+      );
+    }
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const results = await batchRestartSAP(env);
+          console.log(`批量重启结果（定时触发）：\n${results.join("\n")}`);
+        } catch (error) {
+          console.error(`全局执行出错（定时触发）: ${error.message}`);
+        }
+      })()
+    );
+  }
+};
+
+// 核心批量重启SAP函数（保持不变）
+async function batchRestartSAP(env) {
+  const accounts = [
+    {
+      uaaUrl: "https://uaa.cf.us10-001.hana.ondemand.com/oauth/token",
+      apiUrl: "https://api.cf.us10-001.hana.ondemand.com",
+      username: env.SAP_USERNAME,
+      password: env.SAP_PASSWORD,
+      appGuid: env.US_SAP_APP_GUID
+    },
+    {
+      uaaUrl: "https://uaa.cf.ap21.hana.ondemand.com/oauth/token",
+      apiUrl: "https://api.cf.ap21.hana.ondemand.com",
+      username: env.SAP_USERNAME,
+      password: env.SAP_PASSWORD,
+      appGuid: env.SG_SAP_APP_GUID
+    }
+  ];
+
+  return await Promise.all(
+    accounts.map(async (account, index) => {
+      try {
+        const tokenResponse = await fetch(account.uaaUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": "Basic Y2Y6"
+          },
+          body: new URLSearchParams({
+            grant_type: "password",
+            username: account.username,
+            password: account.password,
+            scope: "cloud_controller.write"
+          })
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error(`Token获取失败: ${await tokenResponse.text()}`);
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+        if (!accessToken) throw new Error("未获取到有效Token");
+
+        const restartResponse = await fetch(
+          `${account.apiUrl}/v3/apps/${account.appGuid}/actions/restart`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        if (restartResponse.ok) {
+          return `账号${index+1}：应用重启请求已发送`;
+        } else {
+          const errorDetails = await restartResponse.text();
+          return `账号${index+1}：重启失败 - ${errorDetails}`;
+        }
+      } catch (err) {
+        return `账号${index+1}：执行出错 - ${err.message}`;
+      }
+    })
+  );
+}
