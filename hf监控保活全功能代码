@@ -1,10 +1,11 @@
 // HuggingFace Space 自动保活 Worker
+// url: "https://ic6-v3.hf.space",
 // 新增功能：在界面显示Space的访问URL
 const HF_SPACES = [
   {
     name: "Space",
     region: "Global",
-    url: "https://ic6-v3.hf.space",
+    url: "https://huggingface.co/spaces/ic6/v3",
     spaceName: "ic6/v3",
     description: "主要应用空间（免费 CPU 版）"
   }
@@ -292,7 +293,7 @@ class HuggingFaceKeeper {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HF-Keeper 自动保活</title>
+    <title>HF自动保活监控系统</title>
     <style>
         :root {
             --primary: #ff6b35;
@@ -430,7 +431,7 @@ class HuggingFaceKeeper {
 <body>
     <div class="container">
         <div class="header">
-            <h1>HF-Keeper 自动保活监控</h1>
+            <h1>HF自动保活监控系统</h1>
             <div class="update-time">最后更新: ${lastUpdate} | 持久化: ${hasKV}</div>
         </div>
 
