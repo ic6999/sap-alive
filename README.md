@@ -16,6 +16,7 @@ https://client.webhostmost.com/login
 https://cloud.appwrite.io/console/project-syd-68e75de80032dbfc1136/functions/function-68e75e0f000b7315af66
 
 🟡SOFT:
+
 https://dash.cloudflare.com/1908f0ae18637940f0a6d2120e4550a1/home/domains
 
 https://github.com/ic6999?tab=repositories
@@ -23,6 +24,7 @@ https://github.com/ic6999?tab=repositories
 https://mail.google.com/mail/u/0/#inbox
 
 🌎DOMAIM:
+
 https://www.cloudns.net/records/domain/8924641/
 
 https://dash.domain.digitalplat.org/panel/main?page=%2Fpanel%2Foverview
@@ -30,12 +32,19 @@ https://dash.domain.digitalplat.org/panel/main?page=%2Fpanel%2Foverview
 https://customer.l53.net
 
 🔵TOOLS:
+
 https://1024tools.com/uuid
+
 https://www.base64decode.org
+
 美国地址生成器：
+
 https://addressgenerator.top/zh/us-address-generator
+
 免费邮箱：
+
 https://2925.com/mobile/login/
+
 订阅汇总：
 https://dy.ic666.ddns-ip.net/auto
 
